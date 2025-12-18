@@ -4,6 +4,11 @@ from typing import List, Dict, Any
 import joblib
 import pandas as pd
 
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 app = FastAPI()
 
 pipeline = joblib.load('churn_pipeline.pkl')
@@ -67,6 +72,7 @@ def json_to_chests_df(json_list: List[Dict[str, Any]], columns: List[str]) -> pd
             df[col] = None
     return df[columns]
 
+
 @app.post("/predict")
 async def predict(data: RequestData):
     try:
@@ -74,11 +80,15 @@ async def predict(data: RequestData):
         chests_df = json_to_chests_df(data.chests, chests_columns)
 
         if games_df.empty:
-            raise ValueError("Empty games dataframe after flatten")
-        if chests_df.empty:
-            raise ValueError("Empty chests dataframe after flatten")
+            raise ValueError("Empty games dataframe - at least 1 game required")
+
+        # chests могут быть пустыми - pipeline обработает
+
+        logger.info(f"Games: {games_df.shape}, Chests: {chests_df.shape}")
 
         probs = pipeline.predict_proba(games_df, chests_df)
         return {"probabilities": probs.tolist()}
+
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error processing prediction: {e}")
+        logger.error(f"Error: {e}")
+        raise HTTPException(status_code=400, detail=f"Error: {e}")
