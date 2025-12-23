@@ -82,12 +82,15 @@ async def predict(data: RequestData):
         if games_df.empty:
             raise ValueError("Empty games dataframe - at least 1 game required")
 
-        # chests могут быть пустыми - pipeline обработает
-
         logger.info(f"Games: {games_df.shape}, Chests: {chests_df.shape}")
+        
+        proba_series = pipeline.predict_proba(games_df, chests_df)
 
-        probs = pipeline.predict_proba(games_df, chests_df)
-        return {"probabilities": probs.tolist()}
+        result = proba_series.to_dict()
+        
+        logger.info(f"Predictions for {len(result)} players")
+        
+        return {"probabilities": result}
 
     except Exception as e:
         logger.error(f"Error: {e}")
